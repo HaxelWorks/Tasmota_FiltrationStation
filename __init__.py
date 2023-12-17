@@ -27,30 +27,39 @@ class TasmotaPowerStripPlugin(octoprint.plugin.StartupPlugin,
                               octoprint.plugin.EventHandlerPlugin):
     # Initialize the plugin
     def on_after_startup(self):
+        self.cancel = False
         # Turn on the printer
         set_channel(2, True)
         # Turn off the fan
         set_channel(3, False)
         
     # Implement the hook for handling events
+    
     def on_event(self, event, payload):
+        
         # Check if a print has started or ended
         if event == "PrintStarted":
+            self.cancel = True
             # Turn on the fan
             set_channel(3, True)
             # Turn on the lights
             set_channel(4, True)
            
-        elif event == "PrintDone":
+        elif event in ["PrintDone", "PrintCancelled", "PrintFailed"]:
             
             def turn_off():
-                """Turn off the everything after 5 minutes."""
-                time.sleep(5 * 60)
+                self.cancel = False
+                """Turn off the everything after 10 minutes."""
+                time.sleep(10 * 60)
+                if self.cancel:
+                    return
+                
                 set_channel(2, False)
                 set_channel(3, False)
                 set_channel(4, False)
-                time.sleep(1)
-                set_channel(1, False) # WARNING: Turns off the Raspberry Pi
+                # time.sleep(1)
+                # set_channel(1, False) # WARNING: Turns off the Raspberry Pi
+                  
             # Start the thread
             t = threading.Thread(target=turn_off)
             t.start()
